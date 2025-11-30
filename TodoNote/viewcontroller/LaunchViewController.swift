@@ -114,18 +114,19 @@ class LaunchViewController: UIViewController {
         // 延迟一小段时间让用户看到完整的启动页
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let mainVC = MainViewController()
-            mainVC.modalPresentationStyle = .fullScreen
-            mainVC.modalTransitionStyle = .crossDissolve
+            // 使用 UINavigationController 包裹，以显示顶部导航栏
+            let navController = UINavigationController(rootViewController: mainVC)
             
             // 如果使用 SceneDelegate，切换 rootViewController
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = windowScene.windows.first {
                 UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve) {
-                    window.rootViewController = mainVC
+                    window.rootViewController = navController
                 }
             } else {
                 // 备用方案：使用 present
-                self.present(mainVC, animated: true)
+                navController.modalPresentationStyle = .fullScreen
+                self.present(navController, animated: true)
             }
         }
     }
