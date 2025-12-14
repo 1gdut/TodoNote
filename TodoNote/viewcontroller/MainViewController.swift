@@ -156,12 +156,12 @@ class MainViewController: UIViewController {
         // 设置自定义标题视图
         setupTitleView()
         
-        // 添加右侧 AI 按钮
+        // 添加右侧加号按钮
         navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "sparkles"),
+            image: UIImage(systemName: "plus"),
             style: .plain,
             target: self,
-            action: #selector(aiButtonTapped)
+            action: #selector(addButtonTapped)
         )
         
         // 添加左侧菜单按钮
@@ -309,8 +309,8 @@ class MainViewController: UIViewController {
     
     // MARK: - Actions
     
-    @objc private func aiButtonTapped() {
-        print("点击了 AI 按钮")
+    @objc private func addButtonTapped() {
+        print("点击了加号按钮")
         // TODO: 打开 AI 助手
     }
     
