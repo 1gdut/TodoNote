@@ -7,4 +7,6 @@ target 'TodoNote' do
 
   # Pods for TodoNote
   pod 'SnapKit'
+  pod 'LookinServer', :subspecs => ['Swift'], :configurations => ['Debug']
+
 end
