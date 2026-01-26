@@ -14,12 +14,14 @@ class MainViewController: UIViewController {
     
     /// 侧边栏是否显示
     private var isSideMenuOpen = false
-    
-    /// 侧边栏宽度
-    private let sideMenuWidth: CGFloat = 280
+
     
     /// 当前选中的 Tab 索引 (0: 笔记, 1: 待办)
+
     private var selectedTabIndex = 0
+
+    /// 侧边栏转场代理
+    private let sideMenuManager = SideMenuTransitionManager()
     
     // MARK: - Child ViewControllers
     
@@ -84,32 +86,7 @@ class MainViewController: UIViewController {
         return scrollView
     }()
     
-    /// 遮罩层
-    private lazy var dimmingView: UIView = {
-        let view = UIView()
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        view.alpha = 0
-        view.isUserInteractionEnabled = false
-        return view
-    }()
-    
-    /// 侧边栏容器
-    private lazy var sideMenuContainer: UIView = {
-        let view = UIView()
-        view.backgroundColor = .white
-        view.layer.shadowColor = UIColor.black.cgColor
-        view.layer.shadowOpacity = 0.3
-        view.layer.shadowOffset = CGSize(width: 2, height: 0)
-        view.layer.shadowRadius = 5
-        return view
-    }()
-    
-    /// 侧边栏控制器
-    private lazy var sideMenuVC: SideMenuViewController = {
-        let vc = SideMenuViewController()
-        vc.delegate = self
-        return vc
-    }()
+
 
     // MARK: - Lifecycle
     
@@ -122,7 +99,7 @@ class MainViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        setupSideMenu()
+
     }
     
     // MARK: - Setup
@@ -236,38 +213,6 @@ class MainViewController: UIViewController {
         contentScrollView.contentOffset = CGPoint(x: CGFloat(selectedTabIndex) * scrollWidth, y: 0)
     }
     
-    private var sideMenuSetup = false
-    
-    private func setupSideMenu() {
-        guard !sideMenuSetup else { return }
-        sideMenuSetup = true
-        
-        guard let window = view.window else { return }
-        
-        // 添加到 window 上
-        window.addSubview(dimmingView)
-        window.addSubview(sideMenuContainer)
-        
-        // 设置遮罩层 frame
-        dimmingView.frame = window.bounds
-        
-        // 设置侧边栏 frame，初始在屏幕左侧外
-        sideMenuContainer.frame = CGRect(
-            x: -sideMenuWidth,
-            y: 0,
-            width: sideMenuWidth,
-            height: window.bounds.height
-        )
-        
-        // 直接添加侧边栏视图
-        sideMenuVC.delegate = self
-        sideMenuContainer.addSubview(sideMenuVC.view)
-        sideMenuVC.view.frame = sideMenuContainer.bounds
-        
-        // 遮罩层点击手势
-        let tap = UITapGestureRecognizer(target: self, action: #selector(closeSideMenu))
-        dimmingView.addGestureRecognizer(tap)
-    }
     
     // MARK: - Tab Actions
     
@@ -311,67 +256,19 @@ class MainViewController: UIViewController {
     
     @objc private func addButtonTapped() {
         print("点击了加号按钮")
-        // TODO: 打开 AI 助手
     }
     
     @objc private func menuButtonTapped() {
-        if isSideMenuOpen {
-            closeSideMenu()
-        } else {
-            openSideMenu()
-        }
-    }
-    
-    // MARK: - Side Menu Control
-    
-    private func openSideMenu() {
-        isSideMenuOpen = true
-        dimmingView.isUserInteractionEnabled = true
+        let aiVC = AIViewController()
+        let nav = UINavigationController(rootViewController: aiVC)
+        // 使用 .custom 或 .overFullScreen 保证底部的 MainVC 不会被从视图层级中移除，防止黑屏
+        nav.modalPresentationStyle = .custom
+        nav.transitioningDelegate = sideMenuManager
         
-        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
-            self.sideMenuContainer.frame.origin.x = 0
-            self.dimmingView.alpha = 1
-        }
-    }
-    
-    @objc private func closeSideMenu() {
-        isSideMenuOpen = false
-        
-        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
-            self.sideMenuContainer.frame.origin.x = -self.sideMenuWidth
-            self.dimmingView.alpha = 0
-        } completion: { _ in
-            self.dimmingView.isUserInteractionEnabled = false
-        }
+        present(nav, animated: true, completion: nil)
     }
 }
 
-// MARK: - SideMenuDelegate
-
-extension MainViewController: SideMenuDelegate {
-    
-    func sideMenuDidSelectItem(_ item: SideMenuItem) {
-        closeSideMenu()
-        
-        switch item {
-        case .profile:
-            print("打开个人资料")
-            
-        case .settings:
-            print("打开设置")
-            
-        case .about:
-            print("打开关于")
-            
-        case .logout:
-            print("退出登录")
-        }
-    }
-    
-    func sideMenuDidClose() {
-        closeSideMenu()
-    }
-}
 
 // MARK: - UIScrollViewDelegate
 
