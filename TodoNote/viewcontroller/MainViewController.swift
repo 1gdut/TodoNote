@@ -255,7 +255,14 @@ class MainViewController: UIViewController {
     // MARK: - Actions
     
     @objc private func addButtonTapped() {
-        print("点击了加号按钮")
+        if selectedTabIndex == 0 {
+            //笔记
+            let addNoteVC = AddNoteViewController()
+            let nav = UINavigationController(rootViewController: addNoteVC)
+            present(nav, animated: true)
+        } else if selectedTabIndex == 1 {
+            //待办
+        }
     }
     
     @objc private func menuButtonTapped() {
