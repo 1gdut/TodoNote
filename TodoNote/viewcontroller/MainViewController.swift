@@ -95,6 +95,26 @@ class MainViewController: UIViewController {
         setupUI()
         setupNavigationBar()
         setupChildViewControllers()
+        checkAndCreateKnowledgeBase()
+    }
+    
+    private func checkAndCreateKnowledgeBase() {
+        let kKnowledgeBaseIdKey = "GLM_KnowledgeBaseId"
+        if UserDefaults.standard.string(forKey: kKnowledgeBaseIdKey) != nil {
+            print("Knowledge Base already exists.")
+            return
+        }
+        
+        GLMNetworkManager.shared.createKnowledgeBase(name: "TodoNote_KnowledgeBase", description: "Knowledge base for TodoNote app", embeddingId: 12, background: "blue", icon: "question") { result in
+            switch result {
+            case .success(let id):
+                print("Successfully created Knowledge Base with ID: \(id)")
+                UserDefaults.standard.set(id, forKey: kKnowledgeBaseIdKey)
+                UserDefaults.standard.synchronize()
+            case .failure(let error):
+                print("Failed to create Knowledge Base: \(error)")
+            }
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
