@@ -258,6 +258,7 @@ class MainViewController: UIViewController {
         if selectedTabIndex == 0 {
             //笔记
             let addNoteVC = AddNoteViewController()
+            addNoteVC.viewModel = AddNoteViewModel(existingNote: nil)
             let nav = UINavigationController(rootViewController: addNoteVC)
             present(nav, animated: true)
         } else if selectedTabIndex == 1 {
