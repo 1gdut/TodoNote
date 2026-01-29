@@ -289,6 +289,7 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
     
     @objc
     func finishButtonTapped() {
+        showToast(message: "已保存")
         viewModel?.saveNote()
     }
 
