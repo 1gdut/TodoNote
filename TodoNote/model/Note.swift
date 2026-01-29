@@ -30,12 +30,15 @@ struct Note: Identifiable, Codable {
     /// 笔记中引用的本地图片文件名列表 (用于资源管理)
     var imageAttachmentNames: [String]
     
+    //笔记存为pdf后的名字
+    var notePDFName: String?
+    
     /// 主题色索引 (0-5)
     var themeColorIndex: Int
     
     // MARK: - CodingKeys
     enum CodingKeys: String, CodingKey {
-        case id, title, content, createdAt, updatedAt, knowledgeDocumentId, imageAttachmentNames, themeColorIndex
+        case id, title, content, createdAt, updatedAt, knowledgeDocumentId, imageAttachmentNames, themeColorIndex, notePDFName
     }
     
     init(
@@ -46,7 +49,8 @@ struct Note: Identifiable, Codable {
         updatedAt: Date = Date(),
         knowledgeDocumentId: String? = nil,
         imageAttachmentNames: [String] = [],
-        themeColorIndex: Int = Int.random(in: 0...5)
+        notePDFName: String? = nil,
+        themeColorIndex: Int = 0
     ) {
         self.id = id
         self.title = title
@@ -55,6 +59,7 @@ struct Note: Identifiable, Codable {
         self.updatedAt = updatedAt
         self.knowledgeDocumentId = knowledgeDocumentId
         self.imageAttachmentNames = imageAttachmentNames
+        self.notePDFName = notePDFName
         self.themeColorIndex = themeColorIndex
     }
     

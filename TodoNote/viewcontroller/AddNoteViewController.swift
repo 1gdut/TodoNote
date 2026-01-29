@@ -224,7 +224,6 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
             showToast(message: "已保存")
             // 只有在数据变脏时才执行保存
             vm.saveNote()
-            // saveNote 的回调 onSaveSuccess 会负责 dismiss，所以这里不用手动调
         } else {
             // 没有修改直接关闭
             dismiss(animated: true)

@@ -74,15 +74,47 @@ class AddNoteViewModel {
     func saveNote() {
         // 可以在这里加校验，比如标题内容都空就不存
         guard !currentNote.title.isEmpty || !currentNote.content.isEmpty else {
-            // 如果是空的，可能意味着用户想取消，或者是误触
-            // 这里看产品逻辑，简单起见我们允许存，或者直接 Dismiss
             onSaveSuccess?() 
             return
         }
+        // 1.保存为pdf，名字存到相印字段
+        if let pdfURL = PDFGenerator.createPDF(from: currentNote) {
+            let fileManager = FileManager.default
+            // 获取 Documents 目录
+            if let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                // 如果之前有 PDF 文件名，拼接完整路径并删除旧文件
+                if let oldFileName = currentNote.notePDFName {
+                    // 兼容处理：如果旧数据存的是绝对路径，直接尝试删除
+                    if oldFileName.hasPrefix("/") {
+                        if fileManager.fileExists(atPath: oldFileName) {
+                            try? fileManager.removeItem(atPath: oldFileName)
+                            print("Deleted old PDF at absolute path: \(oldFileName)")
+                        }
+                    } else {
+                        // 标准处理：拼接 Documents 路径
+                        let oldPDFPath = documentsDir.appendingPathComponent(oldFileName).path
+                        if fileManager.fileExists(atPath: oldPDFPath) {
+                            try? fileManager.removeItem(atPath: oldPDFPath)
+                            print("Deleted old PDF at: \(oldPDFPath)")
+                        }
+                    }
+                }
+            }
+            
+            // 只保存文件名，不存绝对路径
+            currentNote.notePDFName = pdfURL.lastPathComponent
+            print("PDF generated at: \(pdfURL.path)")
+        }
         
+        // 2.先检查如果有旧的id，先调用删除接口，后上传文件，保存文档id
+        if currentNote.knowledgeDocumentId != nil {
+            //掉用删除文档方法，然后上传新的文档
+        } else {
+            //上传并保存文档id
+        }
         saveImmediate()
         
-        // TODO: 触发云端同步逻辑 (未来实现)
+
         
         onSaveSuccess?()
     }
