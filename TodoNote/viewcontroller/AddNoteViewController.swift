@@ -74,6 +74,8 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
         DispatchQueue.main.async {
             self.titleText.isScrollEnabled = false
             self.titleText.isScrollEnabled = true
+            self.bodyText.isScrollEnabled = false
+            self.bodyText.isScrollEnabled = true
         }
         
         if titleText.text.isEmpty && bodyText.text.isEmpty {

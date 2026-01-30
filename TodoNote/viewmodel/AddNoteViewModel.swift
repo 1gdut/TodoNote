@@ -106,16 +106,62 @@ class AddNoteViewModel {
             print("PDF generated at: \(pdfURL.path)")
         }
         
-        // 2.先检查如果有旧的id，先调用删除接口，后上传文件，保存文档id
-        if currentNote.knowledgeDocumentId != nil {
-            //掉用删除文档方法，然后上传新的文档
-        } else {
-            //上传并保存文档id
+        // 2.文档同步逻辑 (先删后传 或 直接上传)
+        // 获取知识库 ID 
+        guard let knowledgeBaseId = UserDefaults.standard.string(forKey: "GLM_KnowledgeBaseId"),
+              let pdfName = currentNote.notePDFName,
+              let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            // 如果没有知识库ID或者没生成PDF，就不做API同步，只本地保存
+            saveImmediate()
+            onSaveSuccess?()
+            return
         }
+        
+        // 构造本地 PDF 完整路径
+        let pdfURL = documentsDir.appendingPathComponent(pdfName)
+        
+      
+        func uploadNewDocument() {
+            GLMNetworkManager.shared.uploadDocument(knowledgeBaseId: knowledgeBaseId, fileUrl: pdfURL) { [weak self] result in
+                guard let self = self else { return }
+                
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let responseData):
+                         if let successInfo = responseData.successInfos?.first {
+                             print("✅ 上传新文档成功，ID: \(successInfo.documentId)")
+                             // 更新本地 note 的 knowledgeDocumentId
+                             self.currentNote.knowledgeDocumentId = successInfo.documentId
+                             self.saveImmediate() // 再次保存以持久化 Document ID
+                         } else {
+                             print("⚠️ 上传请求成功但未返回 successInfo")
+                         }
+                    case .failure(let error):
+                        print("❌ 上传新文档失败: \(error)")
+                    }
+                }
+            }
+        }
+        
+        // 判断是否需要先删除旧文档
+        if let existingDocId = currentNote.knowledgeDocumentId {
+            print("正在删除旧文档: \(existingDocId)...")
+            GLMNetworkManager.shared.deleteDocument(documentId: existingDocId) { success, errorMsg in
+                if success {
+                    print("✅ 旧文档删除成功")
+                } else {
+                    print("⚠️ 旧文档删除失败: \(errorMsg ?? "未知错误")")
+                }
+                // 无论删除成功与否，都尝试上传新版本
+                uploadNewDocument()
+            }
+        } else {
+            // 没有旧文档，直接上传
+            print("没有旧文档，直接上传...")
+            uploadNewDocument()
+        }
+        
         saveImmediate()
-        
-
-        
         onSaveSuccess?()
     }
     

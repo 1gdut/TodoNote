@@ -76,6 +76,7 @@ struct Note: Identifiable, Codable {
         // 如果旧数据没有这些字段，提供默认值
         imageAttachmentNames = try container.decodeIfPresent([String].self, forKey: .imageAttachmentNames) ?? []
         themeColorIndex = try container.decodeIfPresent(Int.self, forKey: .themeColorIndex) ?? Int.random(in: 0...5)
+        notePDFName = try container.decodeIfPresent(String.self, forKey: .notePDFName)
     }
 }
 

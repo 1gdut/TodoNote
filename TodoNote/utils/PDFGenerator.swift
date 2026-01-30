@@ -67,7 +67,7 @@ class PDFGenerator {
             contentString.draw(in: contentRect, withAttributes: contentAttributes)
         }
         
-        return savePDFData(data, filename: "Note_\(note.id).pdf")
+        return savePDFData(data, filename: "\(note.title).pdf")
     }
     
     private static func savePDFData(_ data: Data, filename: String) -> URL? {

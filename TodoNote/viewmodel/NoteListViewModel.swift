@@ -36,7 +36,50 @@ class NoteListViewModel {
         guard index < notes.count else { return }
         let note = notes[index]
         
-        //删除本地文件 (NoteManager 会发出 .noteListChanged 通知)
+        
+        // 1. 删除云端知识库文档 
+        if let docId = note.knowledgeDocumentId {
+            GLMNetworkManager.shared.deleteDocument(documentId: docId) { success, _ in
+                if success {
+                    print("云端文档删除成功")
+                } else {
+                    print("云端文档删除失败或不存在")
+                }
+            }
+        }
+        
+        // 2. 删除本地 PDF (如果有)
+        if let pdfName = note.notePDFName {
+            print("检测到关联 PDF: \(pdfName)")
+            let fileManager = FileManager.default
+            if let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                // 兼容旧绝对路径和新相对路径
+                if pdfName.hasPrefix("/") {
+                    if fileManager.fileExists(atPath: pdfName) {
+                        try? fileManager.removeItem(atPath: pdfName)
+                        print("本地旧PDF删除成功 (绝对路径)")
+                    } else {
+                        print("⚠️ 旧PDF文件不存在: \(pdfName)")
+                    }
+                } else {
+                    let pdfPath = documentsDir.appendingPathComponent(pdfName).path
+                    if fileManager.fileExists(atPath: pdfPath) {
+                        do {
+                            try fileManager.removeItem(atPath: pdfPath)
+                            print("本地PDF删除成功")
+                        } catch {
+                            print("❌ 删除PDF失败: \(error)")
+                        }
+                    } else {
+                        print("⚠️ PDF文件不存在: \(pdfPath)")
+                    }
+                }
+            }
+        } else {
+            print("ℹ️ 该笔记未关联 PDF")
+        }
+        
+        // 3. 删除本地笔记文件 (NoteManager 会发出 .noteListChanged 通知)
         // 从内存移除，防止并在异步刷新前数据源不一致
         notes.remove(at: index)
         
