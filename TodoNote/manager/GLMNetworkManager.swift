@@ -128,6 +128,11 @@ struct GLMChatChoice: Codable {
     let finish_reason: String?
 }
 
+struct GLMAPIError: Codable {
+    let code: String?
+    let message: String?
+}
+
 struct GLMChatResponse: Codable {
     let id: String?
     let created: Int?
@@ -136,8 +141,12 @@ struct GLMChatResponse: Codable {
     let usage: GLMChatUsage?
     let code: Int?
     let msg: String?
+    let error: GLMAPIError?
     
-    var error: Error? {
+    var apiError: Error? {
+        if let error = error {
+             return NSError(domain: "GLM API Error", code: -1, userInfo: [NSLocalizedDescriptionKey: error.message ?? "Unknown error", "code": error.code ?? ""])
+        }
         if let code = code, code != 200 {
             return NSError(domain: "GLM API Error", code: code, userInfo: [NSLocalizedDescriptionKey: msg ?? "Unknown error"])
         }
@@ -209,7 +218,7 @@ class GLMNetworkManager {
                         stream: Bool = false,
                         temperature: Double? = nil,
                         topP: Double? = nil,
-                        maxTokens: Int? = 131070,
+                        maxTokens: Int? = 4096,
                         requestId: String? = nil,
                         completion: @escaping (Result<GLMChatResponse, Error>) -> Void) {
         
@@ -258,7 +267,7 @@ class GLMNetworkManager {
             
             do {
                 let decodedResponse = try JSONDecoder().decode(GLMChatResponse.self, from: data)
-                if let err = decodedResponse.error {
+                if let err = decodedResponse.apiError {
                     completion(.failure(err))
                     return
                 }

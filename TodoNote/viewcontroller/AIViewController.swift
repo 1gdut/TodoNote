@@ -296,6 +296,7 @@ class AIViewController: UIViewController {
                      
                     switch result {
                     case .success(let response):
+                        print(response)
                         let content = response.choices?.first?.message?.content ?? "未能获取到回答"
                         let aiMsg = ChatMessage(id: UUID().uuidString, text: content, isUser: false, date: Date())
                         self?.addMessage(aiMsg)
