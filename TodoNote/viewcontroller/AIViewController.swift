@@ -95,7 +95,9 @@ extension AIViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "AIMessageCell", for: indexPath) as! AIMessageCell
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "AIMessageCell", for: indexPath) as? AIMessageCell else {
+            return UITableViewCell()
+        }
         let message = messages[indexPath.row]
         cell.configure(with: message.text, isUser: message.isUser)
         return cell
