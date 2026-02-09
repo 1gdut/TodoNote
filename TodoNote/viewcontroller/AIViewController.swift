@@ -79,12 +79,12 @@ class ChatBubbleCell: UITableViewCell {
             make.top.equalToSuperview().offset(10)
             make.bottom.equalToSuperview().offset(-10)
             make.width.lessThanOrEqualTo(UIScreen.main.bounds.width * 0.75)
+        }
+        
+        bubbleView.snp.prepareConstraints { make in
             self.leadingConstraint = make.leading.equalTo(avatarImageView.snp.trailing).offset(8).constraint
             self.trailingConstraint = make.trailing.equalTo(avatarImageView.snp.leading).offset(-8).constraint
         }
-        // Deactivate initially
-        self.leadingConstraint?.deactivate()
-        self.trailingConstraint?.deactivate()
     }
     
     func configure(with message: ChatMessage) {
