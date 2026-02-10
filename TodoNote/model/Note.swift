@@ -33,12 +33,15 @@ struct Note: Identifiable, Codable {
     //笔记存为pdf后的名字
     var notePDFName: String?
     
+    /// 关联的待办事项 ID 列表（实现双向联动）
+    var linkedTodoIds: [UUID]?
+    
     /// 主题色索引 (0-5)
     var themeColorIndex: Int
     
     // MARK: - CodingKeys
     enum CodingKeys: String, CodingKey {
-        case id, title, content, createdAt, updatedAt, knowledgeDocumentId, imageAttachmentNames, themeColorIndex, notePDFName
+        case id, title, content, createdAt, updatedAt, knowledgeDocumentId, imageAttachmentNames, themeColorIndex, notePDFName, linkedTodoIds
     }
     
     init(
@@ -50,6 +53,7 @@ struct Note: Identifiable, Codable {
         knowledgeDocumentId: String? = nil,
         imageAttachmentNames: [String] = [],
         notePDFName: String? = nil,
+        linkedTodoIds: [UUID]? = nil,
         themeColorIndex: Int = 0
     ) {
         self.id = id
@@ -60,6 +64,7 @@ struct Note: Identifiable, Codable {
         self.knowledgeDocumentId = knowledgeDocumentId
         self.imageAttachmentNames = imageAttachmentNames
         self.notePDFName = notePDFName
+        self.linkedTodoIds = linkedTodoIds
         self.themeColorIndex = themeColorIndex
     }
     
@@ -77,6 +82,7 @@ struct Note: Identifiable, Codable {
         imageAttachmentNames = try container.decodeIfPresent([String].self, forKey: .imageAttachmentNames) ?? []
         themeColorIndex = try container.decodeIfPresent(Int.self, forKey: .themeColorIndex) ?? Int.random(in: 0...5)
         notePDFName = try container.decodeIfPresent(String.self, forKey: .notePDFName)
+        linkedTodoIds = try container.decodeIfPresent([UUID].self, forKey: .linkedTodoIds)
     }
 }
 

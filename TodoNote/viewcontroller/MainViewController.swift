@@ -76,8 +76,8 @@ class MainViewController: UIViewController {
     }()
     
     /// 内容滚动视图
-    private lazy var contentScrollView: UIScrollView = {
-        let scrollView = UIScrollView()
+    private lazy var contentScrollView: MainContentScrollView = {
+        let scrollView = MainContentScrollView()
         scrollView.isPagingEnabled = true  // 分页滚动
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
@@ -283,6 +283,9 @@ class MainViewController: UIViewController {
             present(nav, animated: true)
         } else if selectedTabIndex == 1 {
             //待办
+            let addTodoVC = AddTodoViewController()
+            let nav = UINavigationController(rootViewController: addTodoVC)
+            present(nav, animated: true)
         }
     }
     
@@ -309,5 +312,36 @@ extension MainViewController: UIScrollViewDelegate {
             selectedTabIndex = pageIndex
             updateTabStyle(index: pageIndex)
         }
+    }
+}
+
+// MARK: - Custom ScrollView
+class MainContentScrollView: UIScrollView {
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // 仅处理 Pan 手势
+        guard let panGesture = gestureRecognizer as? UIPanGestureRecognizer else {
+            return super.gestureRecognizerShouldBegin(gestureRecognizer)
+        }
+        
+        let velocity = panGesture.velocity(in: self)
+        
+        // 1. 如果是垂直滑动（纵向分量 > 横向分量），让子视图（TableView/CollectionView）处理
+        // 因为父 ScrollView 只负责横向分页
+        if abs(velocity.y) > abs(velocity.x) {
+            return false
+        }
+        
+        // 2. 如果是横向滑动
+        // 检查是否在第二页（待办页），且正在向左滑（velocity.x < 0）
+        // 向左滑意味着“试图去下一页”，但已经没有下一页了
+        // 这种情况下，我们把手势让给子视图（TableView 的侧滑删除）
+        if contentOffset.x >= frame.width * 0.9 { // 留一点余量防止计算误差
+             if velocity.x < 0 {
+                 return false
+             }
+        }
+        
+        // 其他情况（如在第一页左滑去第二页，或在第二页右滑回第一页），保持父视图的滑动
+        return super.gestureRecognizerShouldBegin(gestureRecognizer)
     }
 }
