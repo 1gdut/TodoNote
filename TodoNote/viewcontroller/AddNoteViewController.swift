@@ -18,6 +18,7 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
         textView.placeholder = "标题"
         textView.placeholderFont = .systemFont(ofSize: 24, weight: .bold)
         textView.font = .systemFont(ofSize: 24, weight: .bold)
+        textView.backgroundColor = .clear // 设置透明背景
         textView.delegate = self
         return textView
     }()
@@ -43,6 +44,7 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
         textView.placeholder = "记录美好生活..."
         textView.placeholderFont = .systemFont(ofSize: 20)
         textView.font = .systemFont(ofSize: 20)
+        textView.backgroundColor = .clear // 设置透明背景
         textView.delegate = self
         return textView
     }()
@@ -53,9 +55,11 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
         return toolBar
     }()
 
+    private var todoLoadingToastView: UIView?
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = UIColor(hex: "F5F5F5")
         setupNav()
         setupUI()
         setupLayout()
@@ -118,6 +122,12 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
         view.addSubview(dividerLine)
         view.addSubview(bodyText)
         view.addSubview(keyboardToolBar)
+
+        keyboardToolBar.delegate = self
+        let todoImage = UIImage(systemName: "checkmark.circle") ?? UIImage()
+        keyboardToolBar.configure(items: [
+            KeyboardToolBar.Item(identifier: "todo", image: todoImage)
+        ])
     }
     
     // MARK: - UITextViewDelegate
@@ -164,6 +174,82 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
 
 
         navigationItem.titleView = saveTimeLabel
+    }
+
+    private func setTodoLoading(_ isLoading: Bool) {
+        DispatchQueue.main.async {
+            if isLoading {
+                self.showTodoLoadingToast(message: "正在生成待办")
+            } else {
+                self.hideTodoLoadingToast()
+            }
+            self.keyboardToolBar.isUserInteractionEnabled = !isLoading
+        }
+    }
+
+    private func showTodoLoadingToast(message: String) {
+        guard todoLoadingToastView == nil else { return }
+
+        let containerView = UIView()
+        containerView.backgroundColor = UIColor(white: 0, alpha: 0.8)
+        containerView.layer.cornerRadius = 12
+        containerView.clipsToBounds = true
+        containerView.alpha = 0.0
+
+        let iconView = UIImageView(image: UIImage(systemName: "hourglass"))
+        iconView.tintColor = .white
+        iconView.contentMode = .scaleAspectFit
+
+        let toastLabel = UILabel()
+        toastLabel.textColor = .white
+        toastLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        toastLabel.textAlignment = .center
+        toastLabel.text = message
+
+        containerView.addSubview(iconView)
+        containerView.addSubview(toastLabel)
+
+        let hostView: UIView
+        if let window = view.window {
+            hostView = window
+        } else {
+            hostView = view
+        }
+        hostView.addSubview(containerView)
+
+        containerView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.height.equalTo(130)
+        }
+
+        iconView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalToSuperview().offset(22)
+            make.width.height.equalTo(34)
+        }
+
+        toastLabel.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(iconView.snp.bottom).offset(12)
+            make.leading.trailing.equalToSuperview().inset(8)
+        }
+
+        todoLoadingToastView = containerView
+
+        UIView.animate(withDuration: 0.2) {
+            containerView.alpha = 1.0
+        }
+    }
+
+    private func hideTodoLoadingToast() {
+        guard let loadingView = todoLoadingToastView else { return }
+        todoLoadingToastView = nil
+
+        UIView.animate(withDuration: 0.2, animations: {
+            loadingView.alpha = 0.0
+        }) { _ in
+            loadingView.removeFromSuperview()
+        }
     }
     
     func setupNotification() {
@@ -294,5 +380,167 @@ class AddNoteViewController: UIViewController, UITextViewDelegate {
         viewModel?.saveNote()
     }
 
+}
+
+extension AddNoteViewController: KeyboardToolBarDelegate {
+    func keyboardToolBarDidTapDismiss(_ toolBar: KeyboardToolBar) {
+        // 默认行为在 KeyboardToolBar 内部已做 resignFirstResponder
+    }
+
+    func keyboardToolBar(_ toolBar: KeyboardToolBar, didTapItem item: KeyboardToolBar.Item) {
+        switch item.identifier {
+        case "todo":
+            requestTodoSuggestionFromCurrentNote()
+        default:
+            break
+        }
+    }
+
+    private func requestTodoSuggestionFromCurrentNote() {
+        setTodoLoading(true)
+        let noteTitle = titleText.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let noteContent = bodyText.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        let noteText = """
+        标题：\(noteTitle.isEmpty ? "(空)" : noteTitle)
+        正文：\(noteContent.isEmpty ? "(空)" : noteContent)
+        """
+
+          let systemPrompt = """
+          你是一个从笔记中提取待办事项的助手。
+          你必须严格按以下规则输出：
+          1) 如果笔记内容中没有明确、可执行、具体的待办事项：只输出 NO_TODO（不加引号，不要输出其他任何文字）。
+          2) 如果存在待办：只输出一个 JSON 对象（不允许 Markdown 代码块，不要输出解释文字），格式必须是：
+              {"title":"..."}
+          3) title 用一句话概括待办，尽量短。
+          """
+
+        let messages = [
+            GLMChatMessage(role: "system", content: systemPrompt),
+            GLMChatMessage(role: "user", content: "请从下面笔记中提取最多 1 条待办：\n\n\(noteText)")
+        ]
+
+        GLMNetworkManager.shared.chatCompletion(
+            messages: messages,
+            temperature: 0.2,
+            topP: 0.9,
+            maxTokens: 2048
+        ) { [weak self] result in
+            self?.setTodoLoading(false)
+            switch result {
+            case .success(let response):
+                guard let firstChoice = response.choices?.first else {
+                    print("[Todo Suggestion] 返回 choices 为空")
+                    print("[Todo Suggestion] Response: \(response)")
+                    return
+                }
+
+                guard let rawContent = firstChoice.message?.content else {
+                    print("[Todo Suggestion] choice.message 为空")
+                    print("[Todo Suggestion] Response: \(response)")
+                    return
+                }
+
+                let content = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if content.isEmpty {
+                    print("[Todo Suggestion] 返回 content 为空字符串")
+                    print("[Todo Suggestion] Response: \(response)")
+                    return
+                }
+
+                if content == "NO_TODO" || content.uppercased().contains("NO_TODO") {
+                    print("[Todo Suggestion] 当前内容没有待办")
+                    DispatchQueue.main.async {
+                        self?.showToast(message: "当前内容没有待办")
+                    }
+                    return
+                }
+
+                guard let jsonText = Self.extractFirstJSONObject(from: content) else {
+                    print("[Todo Suggestion] 无法解析模型返回内容（不是 JSON 或包含多余文本）")
+                    print("[Todo Suggestion] Raw: \(content)")
+                    return
+                }
+
+                do {
+                    struct TodoSuggestion: Codable {
+                        let title: String
+                    }
+
+                    let data = Data(jsonText.utf8)
+                    let suggestion = try JSONDecoder().decode(TodoSuggestion.self, from: data)
+                    let noteId = self?.viewModel?.currentNoteId
+                    let todo = Todo(title: suggestion.title, isCompleted: false, dueDate: nil, noteId: noteId, createdAt: Date())
+
+                    TodoManager.shared.save(todo: todo)
+                    if let _ = noteId {
+                        self?.viewModel?.linkTodoId(todo.id)
+                    }
+
+                    let formatter = DateFormatter()
+                    formatter.locale = Locale(identifier: "zh_CN")
+                    formatter.timeZone = .current
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss ZZZZ"
+                    print("[Todo Suggestion] 解析成功：\(todo)")
+                    print("[Todo Suggestion] createdAt(本地): \(formatter.string(from: todo.createdAt))")
+                    print("[Todo Suggestion] Suggestion JSON: \(jsonText)")
+
+                    DispatchQueue.main.async {
+                        self?.showToast(message: "已生成待办")
+                    }
+                } catch {
+                    print("[Todo Suggestion] JSON 解码失败：\(error)")
+                    print("[Todo Suggestion] JSON: \(jsonText)")
+                }
+
+            case .failure(let error):
+                print("[Todo Suggestion] 请求失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self?.showToast(message: "生成待办失败")
+                }
+            }
+        }
+    }
+
+    private static func extractFirstJSONObject(from text: String) -> String? {
+        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // 去掉常见代码块围栏
+        if trimmed.hasPrefix("```") {
+            trimmed = trimmed
+                .replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```JSON", with: "")
+                .replacingOccurrences(of: "```", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // 如果本身就是一个 JSON 对象
+        if trimmed.hasPrefix("{") && trimmed.hasSuffix("}") {
+            return trimmed
+        }
+
+        // 截取第一个“括号配对完整”的 JSON 对象（更稳，避免 lastIndex 把多段内容全吞了）
+        var depth = 0
+        var start: String.Index?
+        for index in trimmed.indices {
+            let ch = trimmed[index]
+            if ch == "{" {
+                if depth == 0 {
+                    start = index
+                }
+                depth += 1
+            } else if ch == "}" {
+                if depth > 0 {
+                    depth -= 1
+                    if depth == 0, let startIndex = start {
+                        return String(trimmed[startIndex...index])
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
 }
 

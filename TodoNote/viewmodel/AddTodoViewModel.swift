@@ -31,6 +31,10 @@ class AddTodoViewModel {
         let newTodo = Todo(title: title, dueDate: due, noteId: relatedNoteId)
         
         TodoManager.shared.save(todo: newTodo)
+
+        if let noteId = relatedNoteId {
+            NoteManager.shared.addLinkedTodoId(noteId: noteId, todoId: newTodo.id)
+        }
         onSuccess?()
     }
 }

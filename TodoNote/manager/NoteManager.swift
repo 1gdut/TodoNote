@@ -69,6 +69,9 @@ class NoteManager {
     // 4. 删除笔记
     func deleteNote(id: UUID) {
         var allNotes = loadAllNotes()
+
+        // 删除笔记前，记录关联的 todoIds，用于解除关联（不删除待办本身）
+        let linkedTodoIdsToUnlink: [UUID] = allNotes.first(where: { $0.id == id })?.linkedTodoIds ?? []
         
         // 在删除笔记前，顺便把该笔记引用的图片也删掉 
         if let noteToDelete = allNotes.first(where: { $0.id == id }) {
@@ -79,6 +82,51 @@ class NoteManager {
         
         allNotes.removeAll { $0.id == id }
         saveNotesToFile(allNotes)
+
+        // 删除笔记时：不删除待办，只解除关联
+        // 1) 优先用 linkedTodoIds 做精确解除
+        if !linkedTodoIdsToUnlink.isEmpty {
+            let todos = TodoManager.shared.loadAllTodos()
+            for todoId in linkedTodoIdsToUnlink {
+                guard var todo = todos.first(where: { $0.id == todoId }) else { continue }
+                if todo.noteId == id {
+                    todo.noteId = nil
+                    TodoManager.shared.save(todo: todo)
+                }
+            }
+        }
+
+        // 2) 兜底：如果笔记没维护 linkedTodoIds，但 todo.noteId 指向该笔记，也解除
+        let todosLinkedByNoteId = TodoManager.shared.loadAllTodos().filter { $0.noteId == id }
+        if !todosLinkedByNoteId.isEmpty {
+            for var todo in todosLinkedByNoteId {
+                todo.noteId = nil
+                TodoManager.shared.save(todo: todo)
+            }
+        }
+    }
+
+    func addLinkedTodoId(noteId: UUID, todoId: UUID) {
+        let allNotes = loadAllNotes()
+        guard let note = allNotes.first(where: { $0.id == noteId }) else { return }
+        var updated = note
+        var ids = updated.linkedTodoIds ?? []
+        guard !ids.contains(todoId) else { return }
+        ids.append(todoId)
+        updated.linkedTodoIds = ids
+        updated.updatedAt = Date()
+        saveNote(updated)
+    }
+
+    func removeLinkedTodoId(noteId: UUID, todoId: UUID) {
+        let allNotes = loadAllNotes()
+        guard let note = allNotes.first(where: { $0.id == noteId }) else { return }
+        var updated = note
+        guard var ids = updated.linkedTodoIds, !ids.isEmpty else { return }
+        ids.removeAll { $0 == todoId }
+        updated.linkedTodoIds = ids.isEmpty ? nil : ids
+        updated.updatedAt = Date()
+        saveNote(updated)
     }
     
     // --- 内部私有方法 ---

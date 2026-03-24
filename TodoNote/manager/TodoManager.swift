@@ -52,8 +52,16 @@ class TodoManager {
     
     func delete(todoId: UUID) {
         var todos = loadAllTodos()
-        todos.removeAll { $0.id == todoId }
+        guard let index = todos.firstIndex(where: { $0.id == todoId }) else { return }
+
+        let noteId = todos[index].noteId
+        todos.remove(at: index)
         saveToDisk(todos: todos)
+
+        // 删除待办时，反向移除笔记中的关联（一个待办只能关联一个笔记）
+        if let noteId = noteId {
+            NoteManager.shared.removeLinkedTodoId(noteId: noteId, todoId: todoId)
+        }
     }
     
     private func saveToDisk(todos: [Todo]) {

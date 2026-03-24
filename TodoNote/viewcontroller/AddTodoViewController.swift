@@ -20,13 +20,14 @@ class AddTodoViewController: UIViewController {
         tf.font = .systemFont(ofSize: 22, weight: .medium)
         tf.borderStyle = .none
         tf.returnKeyType = .done
+        tf.backgroundColor = .clear
         tf.delegate = self
         return tf
     }()
     
     private lazy var dateContainerView: UIView = {
         let view = UIView()
-        view.backgroundColor = .secondarySystemBackground
+        view.backgroundColor = .clear
         view.layer.cornerRadius = 10
         view.clipsToBounds = true
         return view
@@ -36,6 +37,7 @@ class AddTodoViewController: UIViewController {
         let label = UILabel()
         label.text = "截止日期"
         label.font = .systemFont(ofSize: 17)
+        label.backgroundColor = .clear
         return label
     }()
     
@@ -60,7 +62,7 @@ class AddTodoViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = UIColor(hex: "F5F5F5")
         setupNav()
         setupUI()
         setupBindings()
@@ -119,7 +121,7 @@ class AddTodoViewController: UIViewController {
         
         dateLabel.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(15)
-            make.leading.equalToSuperview().offset(15)
+            make.leading.equalToSuperview()
             make.height.equalTo(31) // Match switch height roughly
         }
         
@@ -131,7 +133,7 @@ class AddTodoViewController: UIViewController {
         // 移除高度为 0 的约束，只保留位置约束
         datePicker.snp.makeConstraints { make in
             make.top.equalTo(dateLabel.snp.bottom).offset(10)
-            make.leading.equalToSuperview().offset(15)
+            make.leading.equalToSuperview()
         }
     }
     

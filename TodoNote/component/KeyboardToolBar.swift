@@ -8,7 +8,30 @@
 import UIKit
 import SnapKit
 
+protocol KeyboardToolBarDelegate: AnyObject {
+    func keyboardToolBarDidTapDismiss(_ toolBar: KeyboardToolBar)
+    func keyboardToolBar(_ toolBar: KeyboardToolBar, didTapItem item: KeyboardToolBar.Item)
+}
+
 class KeyboardToolBar: UIView {
+    struct Item: Equatable {
+        let identifier: String
+        let image: UIImage
+    }
+
+    weak var delegate: KeyboardToolBarDelegate?
+
+    private var items: [Item] = []
+
+    private lazy var itemsStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.distribution = .equalSpacing
+        stack.spacing = 12
+        return stack
+    }()
+
     private lazy var downLabel: UILabel = {
         let label = UILabel()
         label.text = "收起"
@@ -42,6 +65,8 @@ class KeyboardToolBar: UIView {
         self.layer.shadowOffset = CGSize(width: 0, height: 2)
         self.layer.shadowOpacity = 0.15
         self.layer.shadowRadius = 8
+
+        addSubview(itemsStackView)
         //收起点击
         let downLabelGesture = UITapGestureRecognizer(target: self, action: #selector(downLabelTapped))
         downLabel.addGestureRecognizer(downLabelGesture)
@@ -51,14 +76,48 @@ class KeyboardToolBar: UIView {
     }
     
     func setupLayout() {
+        itemsStackView.snp.makeConstraints { make in
+            make.leading.equalToSuperview().offset(12)
+            make.centerY.equalToSuperview()
+            make.trailing.lessThanOrEqualTo(downLabel.snp.leading).offset(-12)
+        }
+
         downLabel.snp.makeConstraints { make in
             make.trailing.equalToSuperview().offset(-12)
             make.centerY.equalToSuperview()
         }
     }
+
+    func configure(items: [Item]) {
+        self.items = items
+
+        itemsStackView.arrangedSubviews.forEach { view in
+            itemsStackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        for (index, item) in items.enumerated() {
+            let button = UIButton(type: .system)
+            button.tintColor = .label
+            button.setImage(item.image.withRenderingMode(.alwaysTemplate), for: .normal)
+            button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+            button.tag = index
+            button.addTarget(self, action: #selector(itemButtonTapped(_:)), for: .touchUpInside)
+            itemsStackView.addArrangedSubview(button)
+        }
+    }
+
     @objc
     func downLabelTapped() {
+        delegate?.keyboardToolBarDidTapDismiss(self)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    @objc
+    private func itemButtonTapped(_ sender: UIButton) {
+        let index = sender.tag
+        guard items.indices.contains(index) else { return }
+        delegate?.keyboardToolBar(self, didTapItem: items[index])
     }
 
     override var intrinsicContentSize: CGSize {

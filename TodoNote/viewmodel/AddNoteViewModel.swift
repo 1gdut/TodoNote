@@ -193,11 +193,25 @@ class AddNoteViewModel {
     }
     
     // Expose data for View
+    var currentNoteId: UUID {
+        return currentNote.id
+    }
+
     var initialTitle: String {
         return currentNote.title
     }
     
     var initialContent: String {
         return currentNote.content
+    }
+
+    func linkTodoId(_ todoId: UUID) {
+        var ids = currentNote.linkedTodoIds ?? []
+        guard !ids.contains(todoId) else { return }
+        ids.append(todoId)
+        currentNote.linkedTodoIds = ids
+        currentNote.updatedAt = Date()
+        isDirty = true
+        saveImmediate()
     }
 }
